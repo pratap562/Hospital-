@@ -1,7 +1,8 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, LogOut, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, LogOut, Calendar, type LucideIcon } from 'lucide-react';
 
 export interface SidebarItem {
   id: string;
@@ -28,6 +29,8 @@ export function AppSidebar({
   onLogout,
   className 
 }: AppSidebarProps) {
+  const navigate = useNavigate();
+
   return (
     <div className={cn("pb-12 w-64 border-r bg-card h-screen fixed left-0 top-0", className)}>
       <div className="space-y-4 py-4">
@@ -54,7 +57,15 @@ export function AppSidebar({
           </div>
         </div>
       </div>
-      <div className="absolute bottom-4 px-3 w-full">
+      <div className="absolute bottom-4 px-3 w-full space-y-2">
+        <Button 
+          variant="secondary" 
+          className="w-full justify-start bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100"
+          onClick={() => navigate('/book')}
+        >
+          <Calendar className="mr-2 h-4 w-4" />
+          Patient Booking
+        </Button>
         <Button 
           variant="outline" 
           className="w-full justify-start text-red-500 hover:text-red-600 hover:bg-red-50"
