@@ -1,0 +1,162 @@
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import './BookingApp.css';
+import ConsultationTypeStep from './components/ConsultationTypeStep';
+import HospitalSelectionStep from './components/HospitalSelectionStep';
+import SlotSelectionStep from './components/SlotSelectionStep';
+import DoctorSelectionStep from './components/DoctorSelectionStep';
+import PaymentStep from './components/PaymentStep';
+import SuccessStep from './components/SuccessStep';
+import type { Hospital } from '@/services/mocks/hospitalData';
+import type { Slot } from '@/services/mocks/slotData';
+import type { Doctor } from '@/services/mocks/doctorData';
+
+export type ConsultationType = 'online' | 'offline';
+
+export interface BookingState {
+  leadId: string | null;
+  type: ConsultationType | null;
+  hospital: Hospital | null;
+  slot: Slot | null;
+  doctor: Doctor | null;
+  isFree: boolean;
+  paymentDone: boolean;
+}
+
+const BookingApp: React.FC = () => {
+  const [searchParams] = useSearchParams();
+  const [step, setStep] = useState(1);
+  const [state, setState] = useState<BookingState>({
+    leadId: searchParams.get('leadId'),
+    type: null,
+    hospital: null,
+    slot: null,
+    doctor: null,
+    isFree: false,
+    paymentDone: false,
+  });
+
+  const nextStep = () => setStep(s => s + 1);
+  const prevStep = () => setStep(s => s - 1);
+
+  const updateState = (updates: Partial<BookingState>) => {
+    setState(prev => ({ ...prev, ...updates }));
+  };
+
+  // Progress calculation
+  const totalSteps = state.isFree ? 3 : (state.type === 'offline' ? 5 : 4);
+  const progress = Math.min((step / totalSteps) * 100, 100);
+
+  const handleReset = () => {
+    setStep(1);
+    setState(prev => ({ 
+      ...prev, 
+      type: null, 
+      hospital: null, 
+      slot: null, 
+      doctor: null, 
+      isFree: false, 
+      paymentDone: false 
+    }));
+  };
+
+  return (
+    <div className="booking-app-wrapper">
+      <div className="booking-container">
+        <div className="booking-nav">
+          <div className="booking-logo">Sagar Health</div>
+          <div className="text-sm font-medium text-slate-500">
+            {state.leadId ? `Lead ID: ${state.leadId}` : 'New Booking'}
+          </div>
+        </div>
+
+        <div className="booking-card-main">
+          <div className="booking-progress-bar">
+            <div 
+              className="booking-progress-fill" 
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <div className="booking-step-content">
+            {step === 1 && (
+              <ConsultationTypeStep 
+                onSelect={(type) => {
+                  updateState({ type });
+                  nextStep();
+                }} 
+              />
+            )}
+
+            {step === 2 && state.type === 'offline' && (
+              <HospitalSelectionStep 
+                onSelect={(hospital) => {
+                  updateState({ hospital });
+                  nextStep();
+                }}
+                onBack={prevStep}
+              />
+            )}
+
+            {step === 2 && state.type === 'online' && (
+              <DoctorSelectionStep 
+                onSelect={(doctor, isFree) => {
+                  updateState({ doctor, isFree });
+                  nextStep();
+                }}
+                onBack={prevStep}
+              />
+            )}
+
+            {step === 3 && state.type === 'offline' && (
+              <SlotSelectionStep 
+                hospitalId={state.hospital?.id || ''}
+                onSelect={(slot) => {
+                  updateState({ slot });
+                  nextStep();
+                }}
+                onBack={prevStep}
+              />
+            )}
+
+            {step === 3 && state.type === 'online' && (
+              state.isFree ? (
+                <SuccessStep state={state} onReset={handleReset} />
+              ) : (
+                <PaymentStep 
+                  amount={state.doctor?.pricing || 0}
+                  onSuccess={() => {
+                    updateState({ paymentDone: true });
+                    nextStep();
+                  }}
+                  onBack={prevStep}
+                />
+              )
+            )}
+
+            {step === 4 && state.type === 'offline' && (
+              <PaymentStep 
+                amount={200}
+                onSuccess={() => {
+                  updateState({ paymentDone: true });
+                  nextStep();
+                }}
+                onBack={prevStep}
+              />
+            )}
+
+            {step === 4 && state.type === 'online' && !state.isFree && (
+              <SuccessStep state={state} onReset={handleReset} />
+            )}
+
+            {step === 5 && state.type === 'offline' && (
+              <SuccessStep state={state} onReset={handleReset} />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default BookingApp;
