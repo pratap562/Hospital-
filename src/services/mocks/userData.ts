@@ -52,8 +52,8 @@ export const mockUsers: User[] = [
   },
   {
     id: '6',
-    fullName: 'Pratap',
-    email: 'pratap@sagarhealth.com',
+    fullName: 'Sagar',
+    email: 'sagar1@sagarhealth.com',
     userRoles: ['admin','doctor','receptionist','pharmacist'],
   },
 ];
