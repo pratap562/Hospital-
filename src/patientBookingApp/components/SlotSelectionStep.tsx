@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, AlertCircle, Loader2, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { format, addDays, isSameDay, startOfToday, parseISO } from 'date-fns';
 import { getPublicSlots, lockSlot, type PublicSlot, type SlotLockResult } from '@/services/api';
@@ -14,7 +15,10 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
   const [slots, setSlots] = useState<PublicSlot[]>([]);
   const [loading, setLoading] = useState(false);
-  const [lockingSlotId, setLockingSlotId] = useState<string | null>(null);
+  
+  // New state for selection and processing
+  const [selectedSlot, setSelectedSlot] = useState<PublicSlot | null>(null);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Generate 7 days for the calendar strip
@@ -24,6 +28,7 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
     const fetchSlots = async () => {
       setLoading(true);
       setError(null);
+      setSelectedSlot(null); // Clear selection on date change
       try {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
         const data = await getPublicSlots(hospitalId, dateStr);
@@ -39,15 +44,21 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
     fetchSlots();
   }, [hospitalId, selectedDate]);
 
-  const handleSlotClick = async (slot: PublicSlot) => {
+  const handleSlotSelect = (slot: PublicSlot) => {
     if (slot.availableCount <= 0) return;
-    
-    setLockingSlotId(slot.id);
+    setSelectedSlot(slot);
+    setError(null);
+  };
+
+  const handleProceed = async () => {
+    if (!selectedSlot) return;
+
+    setProcessing(true);
     setError(null);
     try {
       // Attempt to lock the slot
-      const result = await lockSlot(slot.id);
-      onSelect(slot, result);
+      const result = await lockSlot(selectedSlot.id);
+      onSelect(selectedSlot, result);
     } catch (err: any) {
       console.error('Failed to lock slot:', err);
       // Determine error message
@@ -59,13 +70,14 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
       // Refresh slots to show up-to-date availability
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
       getPublicSlots(hospitalId, dateStr).then(setSlots).catch(console.error);
+      setSelectedSlot(null); // Deselect invalid slot
     } finally {
-      setLockingSlotId(null);
+      setProcessing(false);
     }
   };
 
   return (
-    <div className="animate-fade-in w-full max-w-4xl mx-auto">
+    <div className="animate-fade-in w-full max-w-4xl mx-auto pb-24 relative">
       <div className="flex items-center gap-4 mb-8">
         <Button variant="ghost" size="icon" onClick={onBack} className="rounded-full text-slate-600 hover:bg-slate-100">
           <ChevronLeft className="h-6 w-6" />
@@ -152,47 +164,46 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {slots.map((slot) => {
-              const matchesFilter = true; // Add logic if needed
               const isFull = slot.availableCount <= 0;
-              const isLocking = lockingSlotId === slot.id;
+              const isSelected = selectedSlot?.id === slot.id;
               
-              if (!matchesFilter) return null;
-
               return (
                 <button
                   key={slot.id}
-                  onClick={() => handleSlotClick(slot)}
-                  disabled={isFull || isLocking || !!lockingSlotId}
+                  onClick={() => handleSlotSelect(slot)}
+                  disabled={isFull}
                   className={`
-                    relative p-4 rounded-2xl border text-left transition-all duration-300
+                    relative p-4 rounded-2xl border text-left transition-all duration-200
                     ${isFull 
                       ? 'bg-slate-50 border-slate-100 opacity-60 cursor-not-allowed' 
-                      : 'bg-white border-slate-200 hover:border-[var(--booking-primary)] hover:shadow-md cursor-pointer group'
+                      : isSelected
+                        ? 'bg-[var(--booking-primary)] border-[var(--booking-primary)] text-white shadow-lg ring-2 ring-[var(--booking-primary)] ring-offset-2'
+                        : 'bg-white border-slate-200 hover:border-[var(--booking-primary)] hover:shadow-md cursor-pointer'
                     }
                   `}
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <span className={`text-lg font-bold ${isFull ? 'text-slate-400' : 'text-slate-900 group-hover:text-[var(--booking-primary)]'}`}>
+                    <span className={`text-lg font-bold ${isFull ? 'text-slate-400' : isSelected ? 'text-white' : 'text-slate-900'}`}>
                       {format(parseISO(slot.startTime), 'h:mm a')}
                     </span>
-                    {isLocking && <Loader2 className="h-4 w-4 animate-spin text-[var(--booking-primary)]" />}
+                    {isSelected && <div className="h-3 w-3 bg-[var(--booking-accent)] rounded-full animate-pulse" />}
                   </div>
                   
                   <div className="flex justify-between items-center text-xs">
-                    <span className="text-slate-400">
+                    <span className={`${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
                       {format(parseISO(slot.startTime), 'h:mm')} - {format(parseISO(slot.endTime), 'h:mm a')}
                     </span>
                   </div>
 
                   {!isFull && (
                     <div className="mt-3 flex items-center gap-1.5">
-                      <div className="h-1.5 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div className={`h-1.5 flex-1 rounded-full overflow-hidden ${isSelected ? 'bg-white/20' : 'bg-slate-100'}`}>
                         <div 
-                          className="h-full bg-[var(--booking-secondary)]" 
+                          className={`h-full ${isSelected ? 'bg-[var(--booking-accent)]' : 'bg-[var(--booking-secondary)]'}`}
                           style={{ width: `${Math.min((slot.availableCount / 10) * 100, 100)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] font-bold text-[var(--booking-secondary)]">
+                      <span className={`text-[10px] font-bold ${isSelected ? 'text-[var(--booking-accent)]' : 'text-[var(--booking-secondary)]'}`}>
                         {slot.availableCount} left
                       </span>
                     </div>
@@ -209,6 +220,39 @@ const SlotSelectionStep: React.FC<SlotSelectionStepProps> = ({ hospitalId, onSel
           </div>
         )}
       </div>
+      
+      {/* Floating Action Button - Target window level via Portal to escape containing blocks */}
+      {selectedSlot && createPortal(
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-lg animate-fade-in pointer-events-none">
+          <div className="bg-white/95 backdrop-blur-xl border border-[var(--booking-primary)]/20 shadow-[0_20px_50px_rgba(27,67,50,0.3)] rounded-[32px] p-2 flex items-center justify-between gap-4 pl-6 pointer-events-auto">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Appointment at</span>
+              <span className="text-base font-bold text-[var(--booking-primary)]">
+                {format(parseISO(selectedSlot.startTime), 'h:mm a')}
+              </span>
+            </div>
+            <Button 
+              size="lg" 
+              onClick={handleProceed} 
+              disabled={processing}
+              className="bg-[var(--booking-primary)] hover:bg-[var(--booking-primary-dark)] text-white rounded-2xl px-10 h-14 shadow-lg shadow-[var(--booking-primary)]/20 font-bold text-lg min-w-[160px]"
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Securing...
+                </>
+              ) : (
+                <>
+                  Confirm Slot
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </>
+              )}
+            </Button>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

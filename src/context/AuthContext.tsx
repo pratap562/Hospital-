@@ -43,10 +43,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await api.getCurrentUser();
       if (response && response.user) {
         setUser(response.user);
-        // Default to first role if not set
-        if (!activeRole && response.user.roles.length > 0) {
+        
+        // Try to restore active role from localStorage
+        const savedRole = localStorage.getItem('activeRole') as UserRole;
+        if (savedRole && response.user.roles.includes(savedRole)) {
+          setActiveRole(savedRole);
+        } else if (!activeRole && response.user.roles.length > 0) {
+          // Default to first role if not set
           const defaultRole = response.user.roles[0];
           setActiveRole(defaultRole);
+          localStorage.setItem('activeRole', defaultRole);
         }
       }
     } catch (error) {
@@ -71,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (userData.roles.length > 0) {
       const primaryRole = userData.roles[0];
       setActiveRole(primaryRole);
+      localStorage.setItem('activeRole', primaryRole);
       navigate(getDashboardPath(primaryRole));
     } else {
       navigate('/login');
@@ -81,12 +88,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await api.logout();
     setUser(null);
     setActiveRole(null);
+    localStorage.removeItem('activeRole');
     navigate('/login');
   };
 
   const switchRole = (role: UserRole) => {
     if (user?.roles.includes(role)) {
       setActiveRole(role);
+      localStorage.setItem('activeRole', role);
       navigate(getDashboardPath(role));
     }
   };

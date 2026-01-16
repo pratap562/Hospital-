@@ -225,12 +225,15 @@ export interface SlotLockResult {
 
 export interface ConfirmBookingData {
   lockId: string;
-  name: string;
-  email: string;
-  phoneNo: string;
-  healthIssue: string;
-  doctorId: string;
-  doctorName: string;
+  leadId: string;
+  name?: string;
+  email?: string;
+  phoneNo?: string;
+  healthIssue?: string;
+  doctorId?: string;
+  doctorName?: string;
+  duration?: number;
+  amount?: number;
 }
 
 export interface BookingConfirmationResult {
@@ -459,17 +462,7 @@ export const getCurrentUser = async (): Promise<any> => {
 import { mockAppointments, type Appointment } from './mocks/appointmentData';
 import { mockPatients, type Patient } from './mocks/patientData';
 
-export interface ConfirmBookingData {
-  lockId: string;
-  name: string;
-  email: string;
-  phoneNo: string;
-  healthIssue: string;
-  doctorId: string;
-  doctorName: string;
-  duration?: number;
-  amount?: number;
-}
+// Duplicate interface removed
 
 export const getTodaysAppointments = async (hospitalId: string, page: number = 1, limit: number = 10, mode: string = 'offline'): Promise<{ data: Appointment[], total: number }> => {
   if (USE_MOCK) {
@@ -819,6 +812,25 @@ export const updateLeadStatus = async (id: string, isConverted: boolean): Promis
     };
   }
   const response = await api.patch(`/leads/${id}/status`, { isConverted });
+  return response.data;
+};
+
+export const getUnconvertedLeads = async (): Promise<ILead[]> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return [
+      {
+        _id: 'lead-123',
+        name: 'Missed Opportunity (Mock)',
+        email: 'missed@example.com',
+        phoneNumber: '9998887776',
+        city: 'Delhi',
+        healthIssue: 'Migraine',
+        isConverted: false,
+      }
+    ];
+  }
+  const response = await api.get('/leads/analysis/unconverted');
   return response.data;
 };
 

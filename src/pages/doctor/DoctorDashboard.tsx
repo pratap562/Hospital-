@@ -1,22 +1,89 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ClipboardList, Users, Settings } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout, type SidebarItem } from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
 import type { Hospital } from '@/services/mocks/hospitalData';
 import HospitalSelector from '@/components/shared/HospitalSelector';
 import SearchTab from './components/SearchTab';
 import VisitsTab from './components/VisitsTab';
 import PatientsTab from './components/PatientsTab';
+import { getHospitals, getMetadata, type Metadata } from '@/services/api';
 
 const doctorMenuItems: SidebarItem[] = [
-  { id: 'search', label: 'Search', icon: Search },
-  { id: 'visits', label: 'Visits', icon: ClipboardList },
-  { id: 'patients', label: 'Patients', icon: Users },
+  { id: 'search', label: 'Search Patient', icon: Search },
+  { id: 'visits', label: 'Today\'s Visits', icon: ClipboardList },
+  { id: 'patients', label: 'My Patients', icon: Users },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const DoctorDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('search');
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize state from URL
+  const initialTab = searchParams.get('tab') || 'search';
+  const hospitalIdInUrl = searchParams.get('hospitalId');
+
+  const [activeTab, setActiveTabState] = useState(initialTab);
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+  const [metadata, setMetadata] = useState<Metadata | null>(null);
+
+  // Fetch metadata once on mount
+  useEffect(() => {
+    const fetchMeta = async () => {
+      try {
+        const data = await getMetadata();
+        setMetadata(data);
+      } catch (err) {
+        console.error("Failed to fetch metadata", err);
+      }
+    };
+    fetchMeta();
+  }, []);
+
+  // Effect to sync URL tab changes to state (e.g. back button)
+  useEffect(() => {
+    const currentTab = searchParams.get('tab') || 'search';
+    setActiveTabState(currentTab);
+  }, [searchParams]);
+
+  // Effect to restore selected hospital from URL if page refreshed
+  useEffect(() => {
+    const restoreHospital = async () => {
+      if (hospitalIdInUrl && !selectedHospital) {
+        try {
+          // We need to fetch hospital list or specific hospital. 
+          // getHospitals returns a list. We can find the one matching ID.
+          // This is a bit inefficient if list is huge, but fine for now.
+          // Ideally we have getHospitalById
+          const { data } = await getHospitals(1, 100); // Fetch enough to find it? Or assume it's in top 100
+          const found = data.find(h => h.id === hospitalIdInUrl);
+          if (found) {
+            setSelectedHospital(found);
+          }
+        } catch (err) {
+            console.error("Failed to restore hospital selection", err);
+        }
+      }
+    };
+    restoreHospital();
+  }, [hospitalIdInUrl]); // Run when URL hospitalId changes (or on mount)
+
+  const handleTabChange = (tab: string) => {
+    setActiveTabState(tab);
+    setSearchParams(prev => {
+        prev.set('tab', tab);
+        return prev;
+    });
+  };
+
+  const handleHospitalSelect = (hospital: Hospital) => {
+    setSelectedHospital(hospital);
+    setSearchParams(prev => {
+        prev.set('hospitalId', hospital.id);
+        return prev;
+    });
+  };
 
   const getPageTitle = () => {
     if (!selectedHospital) {
@@ -31,17 +98,25 @@ const DoctorDashboard: React.FC = () => {
     }
   };
 
-
-  const handleHospitalSelect = (hospital: Hospital) => {
-    setSelectedHospital(hospital);
+  const handleBackToSelection = () => {
+    setSelectedHospital(null);
+    setSearchParams(prev => {
+        prev.delete('hospitalId');
+        return prev;
+    });
   };
 
   return (
     <DashboardLayout
       menuItems={doctorMenuItems}
       activeTab={activeTab}
-      onTabChange={setActiveTab}
+      onTabChange={handleTabChange}
       pageTitle={getPageTitle()}
+      headerAction={selectedHospital ? (
+        <Button variant="outline" size="sm" onClick={handleBackToSelection}>
+          Change Hospital
+        </Button>
+      ) : undefined}
     >
       {!selectedHospital ? (
         <HospitalSelector
@@ -51,7 +126,7 @@ const DoctorDashboard: React.FC = () => {
         />
       ) : (
         <>
-          {activeTab === 'search' && <SearchTab hospitalId={selectedHospital.id} />}
+          {activeTab === 'search' && <SearchTab hospitalId={selectedHospital.id} metadata={metadata} />}
           
           {activeTab === 'visits' && <VisitsTab hospitalId={selectedHospital.id} />}
           

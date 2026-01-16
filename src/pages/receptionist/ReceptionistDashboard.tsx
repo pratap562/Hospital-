@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, Users, Settings } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { DashboardLayout, type SidebarItem } from '@/components/layout/DashboardLayout';
 import type { Hospital } from '@/services/mocks/hospitalData';
 import HospitalSelector from '@/components/shared/HospitalSelector';
 import AppointmentsTab from './components/AppointmentsTab';
+import { getHospitals } from '@/services/api';
 
 const receptionistMenuItems: SidebarItem[] = [
   { id: 'appointments', label: 'Appointments', icon: Calendar },
@@ -12,8 +14,36 @@ const receptionistMenuItems: SidebarItem[] = [
 ];
 
 const ReceptionistDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('appointments');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'appointments';
+  const hospitalIdInUrl = searchParams.get('hospitalId');
+
   const [selectedHospital, setSelectedHospital] = useState<Hospital | null>(null);
+
+  // Restore hospital from URL
+  useEffect(() => {
+    const restoreHospital = async () => {
+      if (hospitalIdInUrl && !selectedHospital) {
+        try {
+          const { data } = await getHospitals(1, 100);
+          const found = data.find(h => h.id === hospitalIdInUrl);
+          if (found) {
+            setSelectedHospital(found);
+          }
+        } catch (err) {
+          console.error("Failed to restore hospital selection", err);
+        }
+      }
+    };
+    restoreHospital();
+  }, [hospitalIdInUrl]);
+
+  const setActiveTab = (tab: string) => {
+    setSearchParams(prev => {
+        prev.set('tab', tab);
+        return prev;
+    });
+  };
 
   const getPageTitle = () => {
     if (!selectedHospital && activeTab === 'appointments') {
@@ -30,10 +60,18 @@ const ReceptionistDashboard: React.FC = () => {
 
   const handleHospitalSelect = (hospital: Hospital) => {
     setSelectedHospital(hospital);
+    setSearchParams(prev => {
+        prev.set('hospitalId', hospital.id);
+        return prev;
+    });
   };
 
   const handleBackToSelection = () => {
     setSelectedHospital(null);
+    setSearchParams(prev => {
+        prev.delete('hospitalId');
+        return prev;
+    });
   };
 
   return (

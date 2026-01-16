@@ -58,15 +58,16 @@ const visitSchema = z.object({
 
 type VisitFormValues = z.infer<typeof visitSchema>;
 
+// ... types ...
 interface VisitFormProps {
   visitId: string;
   onSuccess: () => void;
+  metadata: Metadata | null;
 }
 
-const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
+const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess, metadata }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [medicineSearch, setMedicineSearch] = useState('');
-  const [metadata, setMetadata] = useState<Metadata | null>(null);
   
   const {
     register,
@@ -82,7 +83,7 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
       presentSymptoms: [],
       previousTreatment: [],
       treatmentGiven: [],
-      vitals: { pulse: 72, bp: '120/80', temperature: 98.6 },
+      vitals: { pulse: undefined, bp: '', temperature: undefined },
       otherProblems: { 
         acidity: false, 
         diabetes: false, 
@@ -96,19 +97,10 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
     },
   });
 
-  useEffect(() => {
-    const fetchMetadata = async () => {
-      try {
-        const data = await getMetadata();
-        setMetadata(data);
-      } catch (error) {
-        console.error('Failed to fetch metadata', error);
-      }
-    };
-    fetchMetadata();
-  }, []);
+  // Removed internal useEffect fetch. Using prop `metadata`.
 
   const selectedMedicines = watch('medicinesGiven') || [];
+  // ...
 
   const filteredMedicines = (metadata?.medicines || mockMedicines).filter(m => 
     m.toLowerCase().includes(medicineSearch.toLowerCase()) && 
@@ -309,14 +301,14 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
                 { id: 'diabetes', label: 'Diabetes' },
                 { id: 'heartProblems', label: 'Heart Problems' },
               ].map((problem) => (
-                <div key={problem.id} className="flex items-center space-x-2">
+                <div key={problem.id} className="flex items-center space-x-2 min-h-[24px]">
                   <input
                     type="checkbox"
                     id={`problem-${problem.id}`}
                     {...register(`otherProblems.${problem.id}` as any)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="h-5 w-5 shrink-0 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer transition-all"
                   />
-                  <Label htmlFor={`problem-${problem.id}`} className="cursor-pointer text-sm">
+                  <Label htmlFor={`problem-${problem.id}`} className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     {problem.label}
                   </Label>
                 </div>

@@ -1,6 +1,6 @@
-import React from 'react';
-import type { BookingState } from '../BookingApp';
-import { CheckCircle2, Calendar, Clock, MapPin, User, ArrowRight, Video, Home, ShieldCheck } from 'lucide-react';
+import React, { useContext } from 'react';
+import { LeadContext, type BookingState } from '../BookingApp';
+import { CheckCircle2, Calendar, Clock, MapPin, User, ArrowRight, Video, Home, ShieldCheck, Download, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface SuccessStepProps {
@@ -9,13 +9,106 @@ interface SuccessStepProps {
 }
 
 const SuccessStep: React.FC<SuccessStepProps> = ({ state, onReset }) => {
-  const bookingId = `SH-${Math.floor(100000 + Math.random() * 900000)}`;
+  const { leadData } = useContext(LeadContext);
   
   const formatTime = (isoString: string) => {
     return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const isOnline = state.type === 'online';
+
+  const handleDownloadReceipt = () => {
+    const printContent = `
+      <html>
+        <head>
+          <title>Appointment Receipt - ${state.appointmentId}</title>
+          <style>
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1b4332; line-height: 1.6; }
+            .header { border-bottom: 2px solid #52b788; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+            .logo { font-size: 24px; font-weight: bold; color: #1b4332; }
+            .status { color: #52b788; font-weight: bold; text-transform: uppercase; }
+            .section { margin-bottom: 30px; }
+            .section-title { font-size: 14px; color: #718096; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; font-weight: bold; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .detail-box { background: #fdfcf4; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+            .label { font-size: 12px; color: #718096; margin-bottom: 4px; }
+            .value { font-weight: bold; font-size: 16px; }
+            .footer { margin-top: 50px; font-size: 12px; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 20px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="logo">Sagar Health</div>
+            <div class="status">Confirmed</div>
+          </div>
+          
+          <div class="section">
+            <div class="section-title">Patient Details</div>
+            <div class="grid">
+              <div class="detail-box">
+                <div class="label">Name</div>
+                <div class="value">${leadData?.name || 'N/A'}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Phone</div>
+                <div class="value">${leadData?.phoneNumber || 'N/A'}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Email</div>
+                <div class="value">${leadData?.email || 'N/A'}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Appointment ID</div>
+                <div class="value">${state.appointmentId || 'N/A'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Visit Information</div>
+            <div class="grid">
+              <div class="detail-box">
+                <div class="label">Type</div>
+                <div class="value">${isOnline ? 'Online Consultation' : 'In-Clinic Visit'}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">${isOnline ? 'Doctor' : 'Hospital'}</div>
+                <div class="value">${isOnline ? state.doctor?.name : state.hospital?.name}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Date</div>
+                <div class="value">${state.slot ? new Date(state.slot.startTime).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : new Date().toLocaleDateString()}</div>
+              </div>
+              <div class="detail-box">
+                <div class="label">Time</div>
+                <div class="value">${state.slot ? formatTime(state.slot.startTime) : 'Flexible'}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="section">
+            <div class="section-title">Payment Summary</div>
+            <div class="detail-box">
+              <div class="label">Status</div>
+              <div class="value">${state.isFree ? 'Free Consultation' : 'Paid Successfully'}</div>
+            </div>
+          </div>
+
+          <div class="footer">
+            <p>This is an electronically generated appointment confirmation.</p>
+            <p>&copy; ${new Date().getFullYear()} Sagar Health. All Rights Reserved.</p>
+          </div>
+          <script>window.print();</script>
+        </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+    }
+  };
 
   return (
     <div className="animate-fade-in text-center py-8">
@@ -33,14 +126,23 @@ const SuccessStep: React.FC<SuccessStepProps> = ({ state, onReset }) => {
           {isOnline ? <Video size={120} className="text-[var(--booking-primary)]" /> : <Home size={120} className="text-[var(--booking-primary)]" />}
         </div>
 
-        <div className="flex justify-between items-center mb-10 pb-6 border-b border-slate-100">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 pb-6 border-b border-slate-100 gap-4">
           <div>
-            <span className="text-xs font-bold uppercase text-[var(--booking-text-light)] tracking-widest block mb-1">Booking ID</span>
-            <span className="font-mono text-2xl font-black text-[var(--booking-primary)]">{bookingId}</span>
+            <span className="text-xs font-bold uppercase text-[var(--booking-text-light)] tracking-widest block mb-1">Appointment ID</span>
+            <span className="font-mono text-2xl font-black text-[var(--booking-primary)]">{state.appointmentId}</span>
           </div>
-          <div className="text-right">
-            <span className="text-xs font-bold uppercase text-[var(--booking-text-light)] tracking-widest block mb-1">Status</span>
-            <span className="px-4 py-1.5 bg-[var(--booking-secondary)]/10 text-[var(--booking-secondary)] rounded-full text-sm font-bold">Confirmed</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <span className="text-xs font-bold uppercase text-[var(--booking-text-light)] tracking-widest block mb-1">Status</span>
+              <span className="px-4 py-1.5 bg-[var(--booking-secondary)]/10 text-[var(--booking-secondary)] rounded-full text-sm font-bold">Confirmed</span>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadReceipt}
+              className="rounded-full border-[var(--booking-primary)] text-[var(--booking-primary)] hover:bg-[var(--booking-primary)] hover:text-white"
+            >
+              <Download className="mr-2 h-4 w-4" /> Receipt
+            </Button>
           </div>
         </div>
 
@@ -124,3 +226,4 @@ const SuccessStep: React.FC<SuccessStepProps> = ({ state, onReset }) => {
 };
 
 export default SuccessStep;
+

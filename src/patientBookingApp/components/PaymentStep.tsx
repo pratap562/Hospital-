@@ -9,6 +9,7 @@ interface PaymentStepProps {
   amount: number;
   duration?: number;
   lockId?: string | null;
+  leadId: string; // Added leadId
   bookingData?: {
     name: string;
     email: string;
@@ -25,7 +26,8 @@ interface PaymentStepProps {
 const PaymentStep: React.FC<PaymentStepProps> = ({ 
   amount, 
   duration,
-  lockId, 
+  lockId,
+  leadId, 
   bookingData,
   onSuccess, 
   onBack,
@@ -47,6 +49,7 @@ const PaymentStep: React.FC<PaymentStepProps> = ({
       try {
         const confirmData: ConfirmBookingData = {
           lockId,
+          leadId,
           ...bookingData,
         };
         const result = await confirmBooking(confirmData);

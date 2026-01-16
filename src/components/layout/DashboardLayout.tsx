@@ -22,6 +22,7 @@ interface DashboardLayoutProps {
   activeTab: string;
   onTabChange: (tabId: string) => void;
   pageTitle: string;
+  headerAction?: React.ReactNode;
 }
 
 const RoleIcon = ({ role, className }: { role: UserRole, className?: string }) => {
@@ -42,6 +43,7 @@ export function DashboardLayout({
   activeTab,
   onTabChange,
   pageTitle,
+  headerAction,
 }: DashboardLayoutProps) {
   const { user, activeRole, logout, switchRole } = useAuth();
 
@@ -63,6 +65,11 @@ export function DashboardLayout({
         <header className="h-16 border-b bg-card px-6 flex items-center justify-between sticky top-0 z-10 shadow-sm">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">{pageTitle}</h1>
+            {headerAction && (
+              <div className="ml-4">
+                {headerAction}
+              </div>
+            )}
             {user.roles.length > 1 && (
               <div className="ml-4 flex items-center gap-2">
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Switch Dashboard:</span>

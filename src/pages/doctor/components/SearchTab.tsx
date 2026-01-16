@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { searchVisitByToken, getPatientHistory } from '@/services/api';
+import { searchVisitByToken, getPatientHistory, type Metadata } from '@/services/api';
 import type { Visit } from '@/services/mocks/visitData';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,9 +13,10 @@ import toast from 'react-hot-toast';
 
 interface SearchTabProps {
   hospitalId: string;
+  metadata: Metadata | null;
 }
 
-const SearchTab: React.FC<SearchTabProps> = ({ hospitalId }) => {
+const SearchTab: React.FC<SearchTabProps> = ({ hospitalId, metadata }) => {
   const [tokenNumber, setTokenNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [visit, setVisit] = useState<Visit | null>(null);
@@ -153,7 +154,7 @@ const SearchTab: React.FC<SearchTabProps> = ({ hospitalId }) => {
           {/* History Section */}
           <div className="xl:col-span-2 space-y-6">
             {visit.status === 'waiting' && (
-              <VisitForm visitId={visit.id} onSuccess={handleVisitSuccess} />
+              <VisitForm visitId={visit.id} onSuccess={handleVisitSuccess} metadata={metadata} />
             )}
 
             <Card>
