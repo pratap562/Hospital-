@@ -5,7 +5,7 @@ import { mockMedicines } from './mocks/medicineData';
 import { v4 as uuidv4 } from 'uuid';
 
 // Check if API URL is defined
-const API_URL = import.meta.env.VITE_API_URL || 'https://hospital-sagar-backend.onrender.com/';
+const API_URL = import.meta.env.VITE_API_URL || 'https://hospital-sagar-backend.onrender.com/api';
 const USE_MOCK = !API_URL;
 
 const api = axios.create({
