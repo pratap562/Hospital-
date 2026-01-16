@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import {
-  getPatientByPatientId as getPatientByPatientIdService,
+  getPatientById as getPatientByIdService,
   createPatient as createPatientService,
   listPatients as listPatientsService,
 } from '../services/patientService';
@@ -14,7 +14,7 @@ export const getPatientById = async (req: Request, res: Response): Promise<void>
       return;
     }
 
-    const patient = await getPatientByPatientIdService(patientId);
+    const patient = await getPatientByIdService(patientId);
 
     res.status(200).json({
       success: true,

@@ -17,7 +17,6 @@ export const authMiddleware = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // Try to get token from cookie first, then from Authorization header
     const token = req.cookies?.token || req.headers.authorization?.replace('Bearer ', '');
 
     if (!token) {
@@ -31,7 +30,6 @@ export const authMiddleware = async (
       return;
     }
 
-    // Set user data from decoded token (no database call needed)
     req.user = {
       userId: decoded.userId,
       name: decoded.name,
@@ -43,5 +41,26 @@ export const authMiddleware = async (
   } catch (error) {
     res.status(401).json({ success: false, message: 'Unauthorized: Invalid token' });
   }
+};
+
+// Aliases for better readability in routes
+export const protect = authMiddleware;
+
+export const restrictTo = (...roles: string[]) => {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const hasRole = req.user.roles.some((role) => roles.includes(role.toUpperCase()));
+    if (!hasRole) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have permission to perform this action',
+      });
+    }
+
+    next();
+  };
 };
 

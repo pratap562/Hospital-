@@ -1,8 +1,7 @@
-import { Document, Schema, Types, model } from 'mongoose';
+import { Document, Schema, model } from 'mongoose';
 import { UserRole } from '../types';
 
 export interface UserDocument extends Document {
-  userId: Types.ObjectId;
   email: string;
   passwordHash: string;
   fullName: string;
@@ -17,7 +16,6 @@ export interface UserDocument extends Document {
 
 const userSchema = new Schema<UserDocument>(
   {
-    userId: { type: Schema.Types.ObjectId, auto: true },
     email: { type: String, required: true, unique: true, index: true },
     passwordHash: { type: String, required: true },
     fullName: { type: String, required: true },

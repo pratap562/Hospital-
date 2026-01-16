@@ -4,7 +4,8 @@ import { PaginationOptions, PaginatedResult } from './slotService';
 
 export const getTodaysAppointments = async (
   hospitalObjectId: Types.ObjectId,
-  options: PaginationOptions
+  options: PaginationOptions,
+  mode?: string
 ): Promise<PaginatedResult<any>> => {
   const { page, limit } = options;
   const skip = (page - 1) * limit;
@@ -15,25 +16,25 @@ export const getTodaysAppointments = async (
   const todayEnd = new Date();
   todayEnd.setHours(23, 59, 59, 999);
 
-  const appointments = await Appointment.find({
+  const query: any = {
     hospitalId: hospitalObjectId,
     appointmentDate: {
       $gte: todayStart,
       $lte: todayEnd
     }
-  })
+  };
+
+  if (mode) {
+    query.mode = mode;
+  }
+
+  const appointments = await Appointment.find(query)
     .sort({ slotStartTime: 1 })
     .skip(skip)
     .limit(limit)
     .select('-__v');
 
-  const total = await Appointment.countDocuments({
-    hospitalId: hospitalObjectId,
-    appointmentDate: {
-      $gte: todayStart,
-      $lte: todayEnd
-    }
-  });
+  const total = await Appointment.countDocuments(query);
 
   return {
     data: appointments,

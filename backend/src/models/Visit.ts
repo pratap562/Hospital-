@@ -3,14 +3,15 @@ import { VisitStatus } from "../types";
 
 export interface VisitDocument extends Document {
   visitToken: number;
-  patientId: string;
+  patientId: Types.ObjectId;
   hospitalId: Types.ObjectId;
   doctorId: Types.ObjectId;
   status: VisitStatus;
-  disease?: string;
+  disease: string[];
   diseaseDuration?: string;
-  presentSymptoms?: string;
-  previousTreatment?: string;
+  presentSymptoms?: string[];
+  previousTreatment?: string[];
+  treatmentGiven?: string[];
   vitals?: {
     pulse?: number;
     bp?: string;
@@ -22,6 +23,7 @@ export interface VisitDocument extends Document {
     constipation?: boolean;
     amebiasis?: boolean;
     bp?: boolean;
+    heartProblems?: boolean;
     other?: string;
   };
   medicinesGiven?: string[];
@@ -34,14 +36,15 @@ export interface VisitDocument extends Document {
 const visitSchema = new Schema<VisitDocument>(
   {
     visitToken: { type: Number, required: true },
-    patientId: { type: String, required: true },
+    patientId: { type: Schema.Types.ObjectId, ref: "Patient", required: true },
     hospitalId: { type: Schema.Types.ObjectId, ref: "Hospital", required: true, index: true },
     doctorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     status: { type: String, enum: ["waiting", "done"], required: true },
-    disease: { type: String },
+    disease: [{ type: String, required: true }],
     diseaseDuration: { type: String },
-    presentSymptoms: { type: String },
-    previousTreatment: { type: String },
+    presentSymptoms: [{ type: String }],
+    previousTreatment: [{ type: String }],
+    treatmentGiven: [{ type: String }],
     vitals: {
       pulse: { type: Number },
       bp: { type: String },
@@ -53,6 +56,7 @@ const visitSchema = new Schema<VisitDocument>(
       constipation: { type: Boolean },
       amebiasis: { type: Boolean },
       bp: { type: Boolean },
+      heartProblems: { type: Boolean },
       other: { type: String },
     },
     medicinesGiven: [{ type: String }],

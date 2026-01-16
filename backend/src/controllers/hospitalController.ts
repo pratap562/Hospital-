@@ -3,7 +3,7 @@ import {
   getAllHospitals as getAllHospitalsService,
   createHospital as createHospitalService,
   updateHospital as updateHospitalService,
-  getHospitalByHospitalId as getHospitalByHospitalIdService,
+  getHospitalById as getHospitalByIdService,
   CreateHospitalData,
   UpdateHospitalData,
 } from '../services/hospitalService';
@@ -89,7 +89,7 @@ export const getHospitalById = async (req: Request, res: Response): Promise<void
   try {
     const { hospitalId } = req.params;
 
-    const hospital = await getHospitalByHospitalIdService(hospitalId);
+    const hospital = await getHospitalByIdService(hospitalId);
 
     res.status(200).json({
       success: true,

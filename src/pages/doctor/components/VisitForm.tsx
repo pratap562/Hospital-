@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import React, { useState, useEffect } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { 
   Search, 
   Plus, 
@@ -19,21 +20,27 @@ import {
   Pill, 
   Calendar, 
   Save,
-  Loader2
+  Loader2,
+  Syringe
 } from 'lucide-react';
 import { mockMedicines } from '@/services/mocks/medicineData';
-import { updateVisit } from '@/services/api';
+import { updateVisit, getMetadata, type Metadata } from '@/services/api';
 import toast from 'react-hot-toast';
 
 const visitSchema = z.object({
-  disease: z.string().min(1, 'Disease name is required'),
-  diseaseDuration: z.string().min(1, 'Duration is required'),
-  presentSymptoms: z.string().min(1, 'Present symptoms are required'),
-  previousTreatment: z.string().optional(),
+  disease: z.array(z.string()).min(1, 'At least one disease is required'),
+  diseaseOther: z.string().optional(),
+  diseaseDuration: z.string().optional(),
+  presentSymptoms: z.array(z.string()).optional(),
+  presentSymptomsOther: z.string().optional(),
+  previousTreatment: z.array(z.string()).optional(),
+  previousTreatmentOther: z.string().optional(),
+  treatmentGiven: z.array(z.string()).optional(),
+  treatmentGivenOther: z.string().optional(),
   vitals: z.object({
-    pulse: z.number().min(0),
-    bp: z.string().min(1, 'BP is required'),
-    temperature: z.number().min(0),
+    pulse: z.number().min(0).optional(),
+    bp: z.string().optional(),
+    temperature: z.number().min(0).optional(),
   }),
   otherProblems: z.object({
     acidity: z.boolean().default(false),
@@ -41,10 +48,11 @@ const visitSchema = z.object({
     constipation: z.boolean().default(false),
     amebiasis: z.boolean().default(false),
     bp: z.boolean().default(false),
+    heartProblems: z.boolean().default(false),
     other: z.string().optional(),
   }),
-  medicinesGiven: z.array(z.string()).min(1, 'At least one medicine is required'),
-  advice: z.string().min(1, 'Advice is required'),
+  medicinesGiven: z.array(z.string()).optional(),
+  advice: z.string().optional(),
   followUpDate: z.string().optional(),
 });
 
@@ -58,6 +66,7 @@ interface VisitFormProps {
 const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [medicineSearch, setMedicineSearch] = useState('');
+  const [metadata, setMetadata] = useState<Metadata | null>(null);
   
   const {
     register,
@@ -69,15 +78,39 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
   } = useForm<VisitFormValues>({
     resolver: zodResolver(visitSchema),
     defaultValues: {
+      disease: [],
+      presentSymptoms: [],
+      previousTreatment: [],
+      treatmentGiven: [],
       vitals: { pulse: 72, bp: '120/80', temperature: 98.6 },
-      otherProblems: { acidity: false, diabetes: false, constipation: false, amebiasis: false, bp: false, other: '' },
+      otherProblems: { 
+        acidity: false, 
+        diabetes: false, 
+        constipation: false, 
+        amebiasis: false, 
+        bp: false, 
+        heartProblems: false,
+        other: '' 
+      },
       medicinesGiven: [],
     },
   });
 
-  const selectedMedicines = watch('medicinesGiven');
+  useEffect(() => {
+    const fetchMetadata = async () => {
+      try {
+        const data = await getMetadata();
+        setMetadata(data);
+      } catch (error) {
+        console.error('Failed to fetch metadata', error);
+      }
+    };
+    fetchMetadata();
+  }, []);
 
-  const filteredMedicines = mockMedicines.filter(m => 
+  const selectedMedicines = watch('medicinesGiven') || [];
+
+  const filteredMedicines = (metadata?.medicines || mockMedicines).filter(m => 
     m.toLowerCase().includes(medicineSearch.toLowerCase()) && 
     !selectedMedicines.includes(m)
   );
@@ -94,7 +127,16 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
   const onSubmit = async (data: VisitFormValues) => {
     setIsSubmitting(true);
     try {
-      await updateVisit(visitId, data);
+      // Merge "Other" values into arrays if they exist
+      const finalData = {
+        ...data,
+        disease: data.diseaseOther ? [...data.disease, data.diseaseOther] : data.disease,
+        presentSymptoms: data.presentSymptomsOther ? [...(data.presentSymptoms || []), data.presentSymptomsOther] : data.presentSymptoms,
+        previousTreatment: data.previousTreatmentOther ? [...(data.previousTreatment || []), data.previousTreatmentOther] : data.previousTreatment,
+        treatmentGiven: data.treatmentGivenOther ? [...(data.treatmentGiven || []), data.treatmentGivenOther] : data.treatmentGiven,
+      };
+
+      await updateVisit(visitId, finalData);
       toast.success('Visit details updated successfully');
       onSuccess();
     } catch (error) {
@@ -104,6 +146,11 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
     }
   };
 
+  const watchDisease = watch('disease') || [];
+  const watchSymptoms = watch('presentSymptoms') || [];
+  const watchPrevTreatment = watch('previousTreatment') || [];
+  const watchTreatmentGiven = watch('treatmentGiven') || [];
+
   return (
     <Card className="border-primary/20">
       <CardHeader className="bg-primary/5">
@@ -111,33 +158,103 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
           <Stethoscope className="h-5 w-5 text-primary" />
           Visit Examination
         </CardTitle>
-        <CardDescription>Record clinical findings and prescribe medicines for today's visit</CardDescription>
+        <CardDescription>Record clinical findings and prescribe medicines</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
           {/* Basic Diagnosis */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="disease">Main Disease/Condition</Label>
-              <Input id="disease" {...register('disease')} placeholder="e.g., Viral Fever, Hypertension" />
-              {errors.disease && <p className="text-xs text-destructive">{errors.disease.message}</p>}
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Main Disease/Condition <span className="text-destructive">*</span></Label>
+                <Controller
+                  name="disease"
+                  control={control}
+                  render={({ field }) => (
+                    <MultiSelect
+                      options={metadata?.diseases || []}
+                      selected={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select Diseases"
+                    />
+                  )}
+                />
+                <Input 
+                  {...register('diseaseOther')} 
+                  placeholder="Other Disease (if any)" 
+                  className="mt-2"
+                />
+                {errors.disease && <p className="text-xs text-destructive">{errors.disease.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="diseaseDuration">Duration</Label>
+                <Input id="diseaseDuration" {...register('diseaseDuration')} placeholder="e.g., 3 days, 2 months" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="diseaseDuration">Duration</Label>
-              <Input id="diseaseDuration" {...register('diseaseDuration')} placeholder="e.g., 3 days, 2 months" />
-              {errors.diseaseDuration && <p className="text-xs text-destructive">{errors.diseaseDuration.message}</p>}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label>Presenting Symptoms</Label>
+                <Controller
+                  name="presentSymptoms"
+                  control={control}
+                  render={({ field }) => (
+                    <MultiSelect
+                      options={metadata?.symptoms || []}
+                      selected={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select Symptoms"
+                    />
+                  )}
+                />
+                <Input 
+                  {...register('presentSymptomsOther')} 
+                  placeholder="Other Symptoms (if any)" 
+                  className="mt-2"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Previous Treatment</Label>
+                <Controller
+                  name="previousTreatment"
+                  control={control}
+                  render={({ field }) => (
+                    <MultiSelect
+                      options={metadata?.treatments || []}
+                      selected={field.value || []}
+                      onChange={field.onChange}
+                      placeholder="Select Previous Treatments"
+                    />
+                  )}
+                />
+                <Input 
+                  {...register('previousTreatmentOther')} 
+                  placeholder="Other Previous Treatment (if any)" 
+                  className="mt-2"
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="presentSymptoms">Presenting Symptoms</Label>
-            <Input id="presentSymptoms" {...register('presentSymptoms')} placeholder="e.g., High fever, body ache, cough" />
-            {errors.presentSymptoms && <p className="text-xs text-destructive">{errors.presentSymptoms.message}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="previousTreatment">Previous Treatment (if any)</Label>
-            <Input id="previousTreatment" {...register('previousTreatment')} placeholder="e.g., Took Paracetamol yesterday" />
+            <div className="space-y-2">
+              <Label>Treatment Given Today</Label>
+              <Controller
+                name="treatmentGiven"
+                control={control}
+                render={({ field }) => (
+                  <MultiSelect
+                    options={metadata?.treatments || []}
+                    selected={field.value || []}
+                    onChange={field.onChange}
+                    placeholder="Select Treatments Given"
+                  />
+                )}
+              />
+              <Input 
+                {...register('treatmentGivenOther')} 
+                placeholder="Other Treatment Given (if any, e.g. Basti)" 
+                className="mt-2"
+              />
+            </div>
           </div>
 
           <Separator />
@@ -155,6 +272,7 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
                   id="vitals.pulse" 
                   type="number" 
                   {...register('vitals.pulse', { valueAsNumber: true })} 
+                  placeholder="e.g. 72"
                 />
               </div>
               <div className="space-y-2">
@@ -168,6 +286,7 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
                   type="number" 
                   step="0.1" 
                   {...register('vitals.temperature', { valueAsNumber: true })} 
+                  placeholder="98.6"
                 />
               </div>
             </div>
@@ -182,22 +301,29 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
               Co-morbidities / Other Problems
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-              {['acidity', 'diabetes', 'constipation', 'amebiasis', 'bp'].map((problem) => (
-                <div key={problem} className="flex items-center space-x-2">
+              {[
+                { id: 'acidity', label: 'Acidity' },
+                { id: 'constipation', label: 'Constipation' },
+                { id: 'amebiasis', label: 'Amebiasis' },
+                { id: 'bp', label: 'BP' },
+                { id: 'diabetes', label: 'Diabetes' },
+                { id: 'heartProblems', label: 'Heart Problems' },
+              ].map((problem) => (
+                <div key={problem.id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
-                    id={`problem-${problem}`}
-                    {...register(`otherProblems.${problem}` as any)}
+                    id={`problem-${problem.id}`}
+                    {...register(`otherProblems.${problem.id}` as any)}
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                   />
-                  <Label htmlFor={`problem-${problem}`} className="capitalize cursor-pointer">
-                    {problem === 'bp' ? 'Hypertension' : problem}
+                  <Label htmlFor={`problem-${problem.id}`} className="cursor-pointer text-sm">
+                    {problem.label}
                   </Label>
                 </div>
               ))}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="otherProblems.other">Other Notes</Label>
+              <Label htmlFor="otherProblems.other">Other Health Issues</Label>
               <Input id="otherProblems.other" {...register('otherProblems.other')} placeholder="Any other health issues..." />
             </div>
           </div>
@@ -215,7 +341,7 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search and add medicines..."
+                  placeholder="Search and add medicines (e.g. Mahasudarshan Vati)..."
                   value={medicineSearch}
                   onChange={(e) => setMedicineSearch(e.target.value)}
                   className="pl-9"
@@ -264,7 +390,6 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
                 <p className="text-sm text-muted-foreground italic">No medicines prescribed yet</p>
               )}
             </div>
-            {errors.medicinesGiven && <p className="text-xs text-destructive">{errors.medicinesGiven.message}</p>}
           </div>
 
           <Separator />
@@ -277,12 +402,11 @@ const VisitForm: React.FC<VisitFormProps> = ({ visitId, onSuccess }) => {
                 id="advice"
                 {...register('advice')}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="e.g., Take rest, drink plenty of water..."
+                placeholder="e.g., Take with lukewarm water, avoid spicy food..."
               />
-              {errors.advice && <p className="text-xs text-destructive">{errors.advice.message}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="followUpDate">Follow-up Date (Optional)</Label>
+              <Label htmlFor="followUpDate">Follow-up Date</Label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 

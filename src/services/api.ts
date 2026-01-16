@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { mockHospitals, type Hospital } from './mocks/hospitalData';
 import { mockSlots, type Slot } from './mocks/slotData';
+import { mockMedicines } from './mocks/medicineData';
 import { v4 as uuidv4 } from 'uuid';
 
 // Check if API URL is defined
-const API_URL = import.meta.env.VITE_API_URL // || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://hospital-sagar-backend.onrender.com/';
 const USE_MOCK = !API_URL;
 
 const api = axios.create({
@@ -28,10 +29,10 @@ export const getHospitals = async (page: number = 1, limit: number = 10): Promis
     };
   }
   const response = await api.get(`/hospitals?page=${page}&limit=${limit}`);
-  // Map hospitalId to id if needed, though backend returns hospitalId
+  // Map _id to id for frontend consistency
   const hospitals = response.data.data.data || [];
   return {
-    data: hospitals.map((h: any) => ({ ...h, id: h.hospitalId || h.id || h._id })),
+    data: hospitals.map((h: any) => ({ ...h, id: h._id })),
     total: response.data.data.pagination?.total || hospitals.length
   };
 };
@@ -45,7 +46,7 @@ export const createHospital = async (hospital: Omit<Hospital, 'id'>): Promise<Ho
   }
   const response = await api.post('/hospitals', hospital);
   const data = response.data.data;
-  return { ...data, id: data.hospitalId || data.id || data._id };
+  return { ...data, id: data._id };
 };
 
 export const updateHospital = async (id: string, updates: Partial<Hospital>): Promise<Hospital> => {
@@ -58,7 +59,7 @@ export const updateHospital = async (id: string, updates: Partial<Hospital>): Pr
   }
   const response = await api.put(`/hospitals/${id}`, updates);
   const data = response.data.data;
-  return { ...data, id: data.hospitalId || data.id || data._id };
+  return { ...data, id: data._id };
 };
 
 // --- Slot Services ---
@@ -194,6 +195,139 @@ export const deleteSlotsByDate = async (hospitalId: string, date: string): Promi
   await api.delete(`/slots/hospital/${hospitalId}?date=${date}`);
 };
 
+// --- Public Booking APIs (for patient booking app) ---
+
+export interface PublicSlot {
+  id: string;
+  hospitalId: string;
+  startTime: string;
+  endTime: string;
+  slotDate: string;
+  slotNumber: number;
+  maxCapacity: number;
+  bookedCount: number;
+  activeLocksCount: number;
+  availableCount: number;
+  isFull: boolean;
+}
+
+export interface SlotLockResult {
+  lockId: string;
+  bookingAttemptId: string;
+  expiresAt: string;
+  slot: {
+    id: string;
+    startTime: string;
+    endTime: string;
+    slotNumber: number;
+  };
+}
+
+export interface ConfirmBookingData {
+  lockId: string;
+  name: string;
+  email: string;
+  phoneNo: string;
+  healthIssue: string;
+  doctorId: string;
+  doctorName: string;
+}
+
+export interface BookingConfirmationResult {
+  success: boolean;
+  appointmentId: string;
+  appointment: {
+    id: string;
+    appointmentId: string;
+    slotNumber: number;
+    slotStartTime: string;
+    slotEndTime: string;
+    hospitalId: string;
+  };
+}
+
+/**
+ * Get available slots for a hospital (public endpoint with real-time availability)
+ */
+export const getPublicSlots = async (hospitalId: string, date?: string): Promise<PublicSlot[]> => {
+  if (USE_MOCK) {
+    await delay(500);
+    const filtered = mockSlots.filter((s) => s.hospitalId === hospitalId);
+    return filtered.map((s) => ({
+      ...s,
+      activeLocksCount: 0,
+      availableCount: s.maxCapacity - s.bookedCount,
+      isFull: s.bookedCount >= s.maxCapacity,
+      slotDate: s.startTime.split('T')[0],
+    }));
+  }
+  const params = date ? `?date=${date}` : '';
+  const response = await api.get(`/public/booking/slots/${hospitalId}${params}`);
+  return response.data.data;
+};
+
+/**
+ * Lock a slot when proceeding to payment
+ */
+export const lockSlot = async (slotId: string): Promise<SlotLockResult> => {
+  if (USE_MOCK) {
+    await delay(500);
+    const slot = mockSlots.find((s) => s.id === slotId);
+    if (!slot) throw new Error('Slot not found');
+    if (slot.bookedCount >= slot.maxCapacity) {
+      throw new Error('Slot is no longer available. Please select another slot.');
+    }
+    return {
+      lockId: uuidv4(),
+      bookingAttemptId: uuidv4(),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      slot: {
+        id: slot.id,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+        slotNumber: slot.slotNumber || 1,
+      },
+    };
+  }
+  const response = await api.post('/public/booking/slots/lock', { slotId });
+  return response.data.data;
+};
+
+/**
+ * Release a slot lock (when user cancels payment)
+ */
+export const releaseSlotLock = async (lockId: string): Promise<void> => {
+  if (USE_MOCK) {
+    await delay(300);
+    return;
+  }
+  await api.delete(`/public/booking/slots/lock/${lockId}`);
+};
+
+/**
+ * Confirm booking after successful payment
+ */
+export const confirmBooking = async (data: ConfirmBookingData): Promise<BookingConfirmationResult> => {
+  if (USE_MOCK) {
+    await delay(800);
+    const appointmentId = `APT-${Date.now()}-${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
+    return {
+      success: true,
+      appointmentId,
+      appointment: {
+        id: uuidv4(),
+        appointmentId,
+        slotNumber: 1,
+        slotStartTime: new Date().toISOString(),
+        slotEndTime: new Date().toISOString(),
+        hospitalId: 'mock-hospital',
+      },
+    };
+  }
+  const response = await api.post('/public/booking/confirm', data);
+  return response.data.data;
+};
+
 // User Management APIs
 import { mockUsers, type User } from './mocks/userData';
 
@@ -325,12 +459,24 @@ export const getCurrentUser = async (): Promise<any> => {
 import { mockAppointments, type Appointment } from './mocks/appointmentData';
 import { mockPatients, type Patient } from './mocks/patientData';
 
-export const getTodaysAppointments = async (hospitalId: string, page: number = 1, limit: number = 10): Promise<{ data: Appointment[], total: number }> => {
+export interface ConfirmBookingData {
+  lockId: string;
+  name: string;
+  email: string;
+  phoneNo: string;
+  healthIssue: string;
+  doctorId: string;
+  doctorName: string;
+  duration?: number;
+  amount?: number;
+}
+
+export const getTodaysAppointments = async (hospitalId: string, page: number = 1, limit: number = 10, mode: string = 'offline'): Promise<{ data: Appointment[], total: number }> => {
   if (USE_MOCK) {
     await delay(500);
     // Sort by startTime
     const sorted = [...mockAppointments]
-      .filter(a => a.hospitalId === hospitalId)
+      .filter(a => a.hospitalId === hospitalId && (!mode || a.mode === mode)) // Filter by mode if provided
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
     const start = (page - 1) * limit;
     const end = start + limit;
@@ -339,7 +485,7 @@ export const getTodaysAppointments = async (hospitalId: string, page: number = 1
       total: sorted.length,
     };
   }
-  const response = await api.get(`/appointments/today`, { params: { hospitalId, page, limit } });
+  const response = await api.get(`/appointments/today`, { params: { hospitalId, page, limit, mode } });
   // Map backend response to frontend Appointment structure
   const { data, pagination } = response.data;
   return {
@@ -405,7 +551,7 @@ export const searchPatientById = async (patientId: string): Promise<Patient | nu
   if (!patient) return null;
   return {
     ...patient,
-    id: patient.patientId,
+    id: patient._id,
     phoneNumber: patient.phoneNo,
     address: {
       street: patient.address?.street || '',
@@ -440,7 +586,7 @@ export const createPatient = async (patientData: Omit<Patient, 'id'>): Promise<P
   const patient = response.data.data;
   return {
     ...patient,
-    id: patient.patientId,
+    id: patient._id,
     phoneNumber: patient.phoneNo,
   };
 };
@@ -475,7 +621,7 @@ export const getPatients = async (page: number = 1, limit: number = 10): Promise
   return {
     data: data.map((p: any) => ({
       ...p,
-      id: p.patientId,
+      id: p._id,
       phoneNumber: p.phoneNo,
       address: {
         street: p.address?.street || '',
@@ -490,6 +636,13 @@ export const getPatients = async (page: number = 1, limit: number = 10): Promise
 // --- Visit & Medical History APIs ---
 import { mockVisits, type Visit, type MedicalHistory } from './mocks/visitData';
 import { format } from 'date-fns';
+
+export interface Metadata {
+  treatments: string[];
+  medicines: string[];
+  diseases: string[];
+  symptoms: string[];
+}
 
 const mapBackendVisit = (v: any): Visit => {
   const patient = v.patient || {};
@@ -589,4 +742,137 @@ export const updateVisit = async (visitId: string, details: Partial<MedicalHisto
   const response = await api.put(`/visits/${visitId}`, details);
   const visit = response.data.data;
   return mapBackendVisit(visit);
+};
+
+// --- Metadata APIs ---
+
+export const getMetadata = async (): Promise<Metadata> => {
+  if (USE_MOCK) {
+    await delay(300);
+    return {
+      treatments: [
+        "Nadi Pariksha", "Gastrointestinal Disorder", "Prakriti Parikshan",
+        "Hair Fall", "Hypertension Problems", "Respiratory Disorders",
+        "Urinary Disorders", "Joint Disorders", "Skin Disorder",
+        "Eczema", "Fungal Infection", "Acne", "Vitiligo", "Diabetics"
+      ],
+      diseases: [
+        "Diabetes", "Thyroid", "Joint Disorder", "Skin Disorder",
+        "Hypertensions", "Digestive Problems", "Gynecological Problems", "Hair Fall Problems"
+      ],
+      medicines: mockMedicines,
+      symptoms: ["Fever", "Cough", "Cold", "Pain", "Swelling", "Burning Sensation", "Itching", "Weakness"]
+    };
+  }
+  const response = await api.get('/metadata');
+  return response.data.data;
+};
+
+export const updateMetadata = async (metadata: Partial<Metadata>): Promise<Metadata> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return metadata as Metadata;
+  }
+  const response = await api.patch('/metadata', metadata);
+  return response.data.data;
+};
+
+// --- Lead Services ---
+
+export interface ILead {
+  _id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  city: string;
+  healthIssue?: string;
+  isConverted: boolean;
+}
+
+export const getLeadById = async (id: string): Promise<ILead> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return {
+      _id: id,
+      name: 'John Doe (Lead)',
+      email: 'john.lead@example.com',
+      phoneNumber: '9876543210',
+      city: 'Mumbai',
+      healthIssue: 'Back Pain',
+      isConverted: false,
+    };
+  }
+  const response = await api.get(`/leads/${id}`);
+  return response.data;
+};
+
+export const updateLeadStatus = async (id: string, isConverted: boolean): Promise<ILead> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return {
+      _id: id,
+      name: 'John Doe (Lead)',
+      email: 'john.lead@example.com',
+      phoneNumber: '9876543210',
+      city: 'Mumbai',
+      isConverted,
+    };
+  }
+  const response = await api.patch(`/leads/${id}/status`, { isConverted });
+  return response.data;
+};
+
+// --- Analytics Services ---
+
+export interface HospitalAnalytics {
+  name: string;
+  city: string;
+  visitCount: number;
+}
+
+export interface FrequencyAnalytics {
+  disease?: string;
+  treatment?: string;
+  count: number;
+}
+
+export const getHospitalAnalytics = async (startDate?: string, endDate?: string): Promise<HospitalAnalytics[]> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return [
+      { name: 'Sagar Ayurvedic Clinic', city: 'Mumbai', visitCount: 156 },
+      { name: 'Ayush Wellness Center', city: 'Pune', visitCount: 89 },
+      { name: 'Jeevan Hospital', city: 'Lucknow', visitCount: 45 },
+    ];
+  }
+  const response = await api.get('/analytics/hospitals', { params: { startDate, endDate } });
+  return response.data.data;
+};
+
+export const getDiseaseAnalytics = async (startDate?: string, endDate?: string): Promise<FrequencyAnalytics[]> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return [
+      { disease: 'Hypertension', count: 120 },
+      { disease: 'Diabetes', count: 95 },
+      { disease: 'Digestive Problems', count: 67 },
+      { disease: 'Joint Pain', count: 43 },
+    ];
+  }
+  const response = await api.get('/analytics/diseases', { params: { startDate, endDate } });
+  return response.data.data;
+};
+
+export const getTreatmentAnalytics = async (startDate?: string, endDate?: string): Promise<FrequencyAnalytics[]> => {
+  if (USE_MOCK) {
+    await delay(500);
+    return [
+      { treatment: 'Nadi Pariksha', count: 200 },
+      { treatment: 'Brahmi Vati', count: 150 },
+      { treatment: 'Shirodhara', count: 88 },
+      { treatment: 'Panchakarma', count: 45 },
+    ];
+  }
+  const response = await api.get('/analytics/treatments', { params: { startDate, endDate } });
+  return response.data.data;
 };

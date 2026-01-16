@@ -2,7 +2,6 @@ import { Document, Schema, model } from 'mongoose';
 import { Sex } from '../types';
 
 export interface PatientDocument extends Document {
-  patientId: string;
   name: string;
   email?: string;
   phoneNo?: string;
@@ -20,7 +19,6 @@ export interface PatientDocument extends Document {
 
 const patientSchema = new Schema<PatientDocument>(
   {
-    patientId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     email: { type: String },
     phoneNo: { type: String },

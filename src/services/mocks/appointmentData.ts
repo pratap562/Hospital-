@@ -9,88 +9,64 @@ export interface Appointment {
   endTime: string; // ISO string
   status: AppointmentStatus;
   hospitalId: string;
+  mode: 'offline' | 'online'; // Added mode
+  paymentStatus?: 'pending' | 'completed';
+  amount?: number;
+  duration?: number;
 }
 
-// Mock data for today's appointments (2026-01-14 since today is 2026-01-13)
 export const mockAppointments: Appointment[] = [
   {
     id: 'APT001',
     slotNumber: 1,
     patientName: 'Rahul Sharma',
     phoneNumber: '9876543210',
-    startTime: '2026-01-14T09:00:00',
-    endTime: '2026-01-14T09:30:00',
+    startTime: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(),
+    endTime: new Date(new Date().setHours(10, 10, 0, 0)).toISOString(),
     status: 'booked',
-    hospitalId: '1',
+    hospitalId: '1', // Sagar Ayurvedic Clinic
+    mode: 'offline',
+    paymentStatus: 'pending',
+    amount: 200
   },
   {
     id: 'APT002',
     slotNumber: 2,
     patientName: 'Priya Patel',
     phoneNumber: '9876543211',
-    startTime: '2026-01-14T09:30:00',
-    endTime: '2026-01-14T10:00:00',
-    status: 'booked',
+    startTime: new Date(new Date().setHours(10, 10, 0, 0)).toISOString(),
+    endTime: new Date(new Date().setHours(10, 20, 0, 0)).toISOString(),
+    status: 'checked_in',
     hospitalId: '1',
+    mode: 'offline',
+    paymentStatus: 'completed',
+    amount: 200
   },
   {
     id: 'APT003',
     slotNumber: 3,
-    patientName: 'Amit Kumar',
+    patientName: 'Amit Singh',
     phoneNumber: '9876543212',
-    startTime: '2026-01-14T10:00:00',
-    endTime: '2026-01-14T10:30:00',
-    status: 'checked_in',
+    startTime: new Date(new Date().setHours(10, 20, 0, 0)).toISOString(),
+    endTime: new Date(new Date().setHours(10, 30, 0, 0)).toISOString(),
+    status: 'cancelled',
     hospitalId: '1',
+    mode: 'offline',
+    paymentStatus: 'pending',
+    amount: 200
   },
   {
     id: 'APT004',
-    slotNumber: 4,
-    patientName: 'Sunita Devi',
+    slotNumber: 1,
+    patientName: 'Sneha Gupta',
     phoneNumber: '9876543213',
-    startTime: '2026-01-14T10:30:00',
-    endTime: '2026-01-14T11:00:00',
-    status: 'cancelled',
-    hospitalId: '1',
-  },
-  {
-    id: 'APT005',
-    slotNumber: 5,
-    patientName: 'Vikram Singh',
-    phoneNumber: '9876543214',
-    startTime: '2026-01-14T11:00:00',
-    endTime: '2026-01-14T11:30:00',
+    startTime: new Date(new Date().setHours(9, 30, 0, 0)).toISOString(),
+    endTime: new Date(new Date().setHours(10, 0, 0, 0)).toISOString(),
     status: 'booked',
     hospitalId: '1',
-  },
-  {
-    id: 'APT006',
-    slotNumber: 6,
-    patientName: 'Meera Joshi',
-    phoneNumber: '9876543215',
-    startTime: '2026-01-14T11:30:00',
-    endTime: '2026-01-14T12:00:00',
-    status: 'booked',
-    hospitalId: '1',
-  },
-  {
-    id: 'APT007',
-    slotNumber: 7,
-    patientName: 'Ravi Verma',
-    phoneNumber: '9876543216',
-    startTime: '2026-01-14T14:00:00',
-    endTime: '2026-01-14T14:30:00',
-    status: 'booked',
-    hospitalId: '1',
-  },
-  {
-    id: 'APT008',
-    slotNumber: 8,
-    patientName: 'Anita Gupta',
-    phoneNumber: '9876543217',
-    startTime: '2026-01-14T14:30:00',
-    endTime: '2026-01-14T15:00:00',
-    status: 'booked',
-    hospitalId: '1',
-  },
+    mode: 'online', // Online appointment to test filtering
+    paymentStatus: 'completed',
+    amount: 500,
+    duration: 30
+  }
 ];

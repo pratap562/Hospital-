@@ -1,23 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --booking-primary: #6366f1;
-  --booking-primary-dark: #4f46e5;
-  --booking-secondary: #a855f7;
-  --booking-accent: #f43f5e;
-  --booking-bg: #f8fafc;
-  --booking-card-bg: rgba(255, 255, 255, 0.8);
-  --booking-text: #1e293b;
-  --booking-text-light: #64748b;
-  --booking-border: rgba(226, 232, 240, 0.8);
+  /* Ayurvedic Palette */
+  --booking-primary: #1b4332;       /* Deep Forest Green */
+  --booking-primary-dark: #081c15;  /* Darker Green */
+  --booking-secondary: #52b788;     /* Healing Sage */
+  --booking-accent: #d4a373;        /* Warm Earth Gold */
+  --booking-bg: #fdfcf4;            /* Natural Cream/Paper */
+  --booking-card-bg: rgba(255, 255, 255, 0.95);
+  --booking-text: #2d3748;          /* Soft Charcoal */
+  --booking-text-light: #718096;
+  --booking-border: #e2e8f0;
+  
+  /* Gradients */
+  --gradient-ayurveda: linear-gradient(135deg, #2d6a4f 0%, #1b4332 100%);
 }
 
 .booking-app-wrapper {
   min-height: 100vh;
-  background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.1), transparent),
-              radial-gradient(circle at bottom left, rgba(168, 85, 247, 0.1), transparent),
-              var(--booking-bg);
-  font-family: 'Outfit', sans-serif;
+  background: var(--booking-bg);
+  /* Subtle leaf-like pattern overlay could go here */
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(82, 183, 136, 0.05) 0%, transparent 20%),
+    radial-gradient(circle at 90% 80%, rgba(212, 163, 115, 0.05) 0%, transparent 20%);
+  font-family: 'Outfit', sans-serif; /* Consider switching to a serif for headers if available */
   color: var(--booking-text);
   padding: 2rem 1rem;
   display: flex;
@@ -40,12 +46,16 @@
 }
 
 .booking-logo {
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: linear-gradient(to right, var(--booking-primary), var(--booking-secondary));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: -0.02em;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--booking-primary);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* Remove gradient text for a more solid, premium look */
+  background: none;
+  -webkit-text-fill-color: initial;
 }
 
 .booking-card-main {
@@ -92,21 +102,21 @@
   position: relative;
   padding: 2.5rem;
   background: white;
-  border: 2px solid transparent;
+  border: 1px solid var(--booking-border); /* Thinner border */
   border-radius: 24px;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.4s ease;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
 }
 
 .type-card:hover {
-  transform: translateY(-8px);
-  border-color: var(--booking-primary);
-  box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.1);
+  transform: translateY(-5px);
+  border-color: var(--booking-secondary);
+  box-shadow: 0 15px 30px -5px rgba(27, 67, 50, 0.08); /* Green shadow */
 }
 
 .type-icon-wrapper {

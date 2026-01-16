@@ -1,7 +1,7 @@
 import { Visit } from '../models/Visit';
 import { Token } from '../models/Token';
 import { getAppointmentByPublicId } from './appointmentService';
-import { getPatientByPatientId } from './patientService';
+import { getPatientById } from './patientService';
 import { Types } from 'mongoose';
 
 /**
@@ -22,7 +22,7 @@ export const getNextToken = async (hospitalId: Types.ObjectId, date: Date): Prom
 
 export const createVisit = async (appointmentId: string, patientId: string) => {
   const appointment = await getAppointmentByPublicId(appointmentId);
-  const patient = await getPatientByPatientId(patientId);
+  const patient = await getPatientById(patientId);
 
   // Get hospitalId from appointment (it's a ref to Hospital)
   const hospitalId = appointment.hospitalId;
@@ -32,7 +32,7 @@ export const createVisit = async (appointmentId: string, patientId: string) => {
 
   const visit = new Visit({
     visitToken,
-    patientId,
+    patientId: patient._id,
     hospitalId,
     doctorId: appointment.doctorId,
     status: 'waiting',
@@ -61,7 +61,7 @@ export const searchVisitByTokenToday = async (tokenNumber: number, hospitalId: s
       $lookup: {
         from: 'patients',
         localField: 'patientId',
-        foreignField: 'patientId',
+        foreignField: '_id',
         as: 'patient'
       }
     },
@@ -103,7 +103,7 @@ export const getTodayVisitsForHospital = async (
       $lookup: {
         from: 'patients',
         localField: 'patientId',
-        foreignField: 'patientId',
+        foreignField: '_id',
         as: 'patient'
       }
     },
@@ -152,8 +152,11 @@ export const updateVisitMedicalDetails = async (visitId: string, medicalDetails:
 };
 
 export const getPatientVisitsHistory = async (patientId: string) => {
+  if (!Types.ObjectId.isValid(patientId)) {
+    throw new Error('Invalid patient ID');
+  }
   const visits = await Visit.find({
-    patientId: patientId,
+    patientId: new Types.ObjectId(patientId),
     status: 'done'
   })
     .sort({ createdAt: -1 })
@@ -163,8 +166,11 @@ export const getPatientVisitsHistory = async (patientId: string) => {
 };
 
 export const countPatientDoneVisits = async (patientId: string) => {
+  if (!Types.ObjectId.isValid(patientId)) {
+    return 0;
+  }
   return Visit.countDocuments({
-    patientId: patientId,
+    patientId: new Types.ObjectId(patientId),
     status: 'done'
   });
 };

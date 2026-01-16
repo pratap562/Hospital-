@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { Building2, Users, Settings } from 'lucide-react';
+import { Building2, Users, Settings, FileText, BarChart3 } from 'lucide-react';
 import HospitalTab from './components/HospitalTab';
 import { DashboardLayout, type SidebarItem } from '@/components/layout/DashboardLayout';
 import UserManagement from './components/user/UserManagement';
+import MetadataManagement from './components/MetadataManagement';
+import AnalyticsTab from './components/AnalyticsTab';
 
 const adminMenuItems: SidebarItem[] = [
   { id: 'hospitals', label: 'Hospitals', icon: Building2 },
   { id: 'users', label: 'Users', icon: Users },
+  { id: 'metadata', label: 'Form Settings', icon: FileText },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -17,6 +21,8 @@ const AdminDashboard: React.FC = () => {
     switch (activeTab) {
       case 'hospitals': return 'Hospital Management';
       case 'users': return 'User Management';
+      case 'metadata': return 'Form Settings';
+      case 'analytics': return 'Data Analytics';
       case 'settings': return 'Settings';
       default: return 'Dashboard';
     }
@@ -32,6 +38,8 @@ const AdminDashboard: React.FC = () => {
     >
       {activeTab === 'hospitals' && <HospitalTab />}
       {activeTab === 'users' && <UserManagement />}
+      {activeTab === 'metadata' && <MetadataManagement />}
+      {activeTab === 'analytics' && <AnalyticsTab />}
       {activeTab === 'settings' && (
         <div className="flex items-center justify-center h-64 text-muted-foreground border-2 border-dashed rounded-lg">
           Settings (Coming Soon)

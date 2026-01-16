@@ -1,7 +1,6 @@
 import { Document, Schema, Types, model } from "mongoose";
 
 export interface SlotWindowDocument extends Document {
-  slotWindowId: Types.ObjectId;
   hospitalId: Types.ObjectId;
   startTime: Date;
   endTime: Date;
@@ -15,7 +14,6 @@ export interface SlotWindowDocument extends Document {
 
 const slotWindowSchema = new Schema<SlotWindowDocument>(
   {
-    slotWindowId: { type: Schema.Types.ObjectId, auto: true },
     hospitalId: {
       type: Schema.Types.ObjectId,
       ref: "Hospital",

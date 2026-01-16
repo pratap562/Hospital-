@@ -1,5 +1,5 @@
 import { Hospital } from '../models/Hospital';
-import { generateNanoId } from '../utils/nanoIdGenerator';
+import { Types } from 'mongoose';
 
 export interface CreateHospitalData {
   name: string;
@@ -53,10 +53,13 @@ export const getAllHospitals = async (options: PaginationOptions): Promise<Pagin
 };
 
 /**
- * Get hospital by hospitalId
+ * Get hospital by _id
  */
-export const getHospitalByHospitalId = async (hospitalId: string) => {
-  const hospital = await Hospital.findOne({ hospitalId }).select('-__v');
+export const getHospitalById = async (id: string) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new Error('Invalid hospital ID');
+  }
+  const hospital = await Hospital.findById(id).select('-__v');
   if (!hospital) {
     throw new Error('Hospital not found');
   }
@@ -67,10 +70,7 @@ export const getHospitalByHospitalId = async (hospitalId: string) => {
  * Create a new hospital
  */
 export const createHospital = async (hospitalData: CreateHospitalData) => {
-  const hospitalId = await generateNanoId();
-
   const hospital = new Hospital({
-    hospitalId,
     name: hospitalData.name.trim(),
     city: hospitalData.city.trim(),
   });
@@ -83,13 +83,17 @@ export const createHospital = async (hospitalData: CreateHospitalData) => {
 /**
  * Update hospital
  */
-export const updateHospital = async (hospitalId: string, updateData: UpdateHospitalData) => {
+export const updateHospital = async (id: string, updateData: UpdateHospitalData) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new Error('Invalid hospital ID');
+  }
+
   const updateFields: { name?: string; city?: string } = {};
   if (updateData.name) updateFields.name = updateData.name.trim();
   if (updateData.city) updateFields.city = updateData.city.trim();
 
-  const hospital = await Hospital.findOneAndUpdate(
-    { hospitalId },
+  const hospital = await Hospital.findByIdAndUpdate(
+    id,
     updateFields,
     { new: true, runValidators: true }
   ).select('-__v');
@@ -102,10 +106,13 @@ export const updateHospital = async (hospitalId: string, updateData: UpdateHospi
 };
 
 /**
- * Find hospital by hospitalId (returns ObjectId for internal use)
+ * Find hospital by _id (returns ObjectId for internal use)
  */
-export const findHospitalObjectId = async (hospitalId: string) => {
-  const hospital = await Hospital.findOne({ hospitalId });
+export const findHospitalObjectId = async (id: string) => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new Error('Invalid hospital ID');
+  }
+  const hospital = await Hospital.findById(id);
   if (!hospital) {
     throw new Error('Hospital not found');
   }

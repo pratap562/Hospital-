@@ -174,7 +174,7 @@ export const getSlotsByHospital = async (
     .skip(skip)
     .limit(limit)
     .select('-__v')
-    .populate('hospitalId', 'name city hospitalId');
+    .populate('hospitalId', 'name city');
 
   const total = await SlotWindow.countDocuments({ hospitalId: hospitalObjectId });
 
@@ -199,7 +199,7 @@ export const getSlotById = async (slotId: string) => {
 
   const slot = await SlotWindow.findById(slotId)
     .select('-__v')
-    .populate('hospitalId', 'name city hospitalId');
+    .populate('hospitalId', 'name city');
 
   if (!slot) {
     throw new Error('Slot not found');

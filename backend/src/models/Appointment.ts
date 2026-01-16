@@ -14,7 +14,8 @@ export interface AppointmentDocument extends Document {
   appointmentDate: Date;
   doctorId: Types.ObjectId;
   doctorName: string;
-  patientId: string;
+  patientId: Types.ObjectId;
+  duration?: number;
   slotWindowId: Types.ObjectId;
   slotNumber: number;
   slotStartTime: Date;
@@ -56,7 +57,8 @@ const appointmentSchema = new Schema<AppointmentDocument>(
     appointmentDate: { type: Date, required: true },
     doctorId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     doctorName: { type: String, required: true },
-    patientId: { type: String, required: true },
+    patientId: { type: Schema.Types.ObjectId, ref: "Patient", required: true },
+    duration: { type: Number }, // Duration in minutes
     slotWindowId: {
       type: Schema.Types.ObjectId,
       ref: "SlotWindow",

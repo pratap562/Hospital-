@@ -1,7 +1,6 @@
 import { Document, Schema, model } from 'mongoose';
 
 export interface HospitalDocument extends Document {
-  hospitalId: string;
   name: string;
   city: string;
   createdAt: Date;
@@ -10,7 +9,6 @@ export interface HospitalDocument extends Document {
 
 const hospitalSchema = new Schema<HospitalDocument>(
   {
-    hospitalId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     city: { type: String, required: true },
   },
